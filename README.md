@@ -348,18 +348,3 @@ It exists to remove friction, not introduce abstractions.
 If you understand this README, you understand the system.
 
 ```
-
----
-
-If you want next:
-- **Architecture diagram (ASCII / SVG)**  
-- **API contract doc (OpenAPI-focused)**  
-- **“Why not Docker?” rationale doc**  
-
-Say the word.
-```
-
-## Run
-```bash
-pip install -r requirements.txt
-uvicorn manager.main:app --reload --port 8000
