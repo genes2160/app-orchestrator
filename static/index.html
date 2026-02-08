@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FastAPI App Manager</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+
+<body>
+    <header class="top">
+        <div class="title">
+            <h1>⚙️ FastAPI App Manager</h1>
+            <p class="sub">SQLite-backed app registry. Start/stop without terminal juggling.</p>
+        </div>
+        <div class="actions">
+            <button class="btn" id="btn-import">⬇ Import YAML</button>
+            <button class="btn primary" id="btn-add">➕ Add App</button>
+            <button class="btn" id="btn-refresh">🔄 Refresh</button>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <section class="card">
+            <div class="row head">
+                <div>App</div>
+                <div>Status</div>
+                <div>Port</div>
+                <div>Enabled</div>
+                <div>Actions</div>
+                <div>Open</div>
+            </div>
+
+            <div id="apps" class="rows"></div>
+        </section>
+
+        <section class="card logs">
+            <div class="logs-head">
+                <h2>🧾 Logs</h2>
+                <div class="logs-controls">
+                    <span id="logs-title" class="muted">Select an app…</span>
+                    <button class="btn" id="btn-logs-refresh" disabled>↻ Logs</button>
+                </div>
+            </div>
+            <pre id="logs" class="pre muted">No logs yet.</pre>
+        </section>
+    </main>
+
+    <!-- MODAL -->
+    <div class="modal-backdrop" id="modal-backdrop" hidden></div>
+    <div class="modal" id="modal" hidden>
+        <div class="modal-head">
+            <h3 id="modal-title">Add App</h3>
+            <button class="btn" id="btn-modal-close">✕</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="grid">
+                <label>
+                    <span>Name</span>
+                    <input id="f-name" placeholder="billing" />
+                </label>
+
+                <label>
+                    <span>Path (folder)</span>
+                    <input id="f-path" placeholder="/home/user/projects/billing-api" />
+                </label>
+
+                <label>
+                    <span>Entry (uvicorn)</span>
+                    <input id="f-entry" placeholder="main:app" />
+                </label>
+
+                <label>
+                    <span>Host</span>
+                    <input id="f-host" placeholder="127.0.0.1" value="127.0.0.1" />
+                </label>
+
+                <label>
+                    <span>Port</span>
+                    <input id="f-port" type="number" placeholder="8102" />
+                </label>
+
+                <label>
+                    <span>Args (optional)</span>
+                    <input id="f-args" placeholder="--workers 1" />
+                </label>
+
+                <label class="checkbox">
+                    <input id="f-enabled" type="checkbox" checked />
+                    <span>Enabled</span>
+                </label>
+
+                <div class="hint" id="form-hint"></div>
+            </div>
+        </div>
+
+        <div class="modal-foot">
+            <button class="btn danger" id="btn-delete" hidden>🗑 Delete</button>
+            <div style="flex:1"></div>
+            <button class="btn" id="btn-cancel">Cancel</button>
+            <button class="btn primary" id="btn-save">Save</button>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

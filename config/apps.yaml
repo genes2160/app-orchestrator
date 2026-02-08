@@ -1,0 +1,15 @@
+apps:
+  kasa:
+    path: /home/user/projects/kasa
+    entry: app.main:app
+    default_port: 8101
+
+  billing:
+    path: /home/user/projects/billing-api
+    entry: server:app
+    default_port: 8102
+
+  analytics:
+    path: /home/user/projects/analytics
+    entry: main:app
+    default_port: 8103

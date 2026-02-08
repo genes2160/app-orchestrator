@@ -1,0 +1,50 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+.venv
+venv/
+ENV/
+
+# -----------------------------
+# FastAPI / Uvicorn
+# -----------------------------
+*.log
+*.pid
+
+# -----------------------------
+# OS / Editor
+# -----------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# -----------------------------
+# Node / Frontend tooling (if ever added)
+# -----------------------------
+node_modules/
+
+# -----------------------------
+# Database & Runtime State
+# -----------------------------
+state/*.db
+state/*.db-journal
+state/running.json
+
+# -----------------------------
+# Build / Cache
+# -----------------------------
+dist/
+build/
+.cache/
+
+# -----------------------------
+# Secrets (future-proofing)
+# -----------------------------
+*.key
+*.pem
