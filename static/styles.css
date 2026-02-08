@@ -267,3 +267,145 @@ a.link:hover {
 .muted {
     color: var(--muted);
 }
+
+/* -----------------------------
+   Modal (proper centered + blur)
+------------------------------ */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    /* behind modal */
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    /* above backdrop */
+
+    width: min(720px, calc(100% - 24px));
+    max-height: min(80vh, 760px);
+    overflow: hidden;
+
+    background: rgba(17, 18, 24, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+
+    animation: modalIn 120ms ease-out;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -48%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.modal-head h3 {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: 0.2px;
+}
+
+.modal-body {
+    padding: 14px;
+    overflow: auto;
+    max-height: calc(80vh - 120px);
+    /* header+footer allowance */
+}
+
+.modal-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 12px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.grid input {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
+    outline: none;
+}
+
+.grid input:focus {
+    border-color: rgba(255, 255, 255, 0.20);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.checkbox {
+    grid-column: span 2;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 10px !important;
+    color: var(--text) !important;
+}
+
+.hint {
+    grid-column: span 2;
+    font-size: 12px;
+    color: var(--muted);
+    padding-top: 2px;
+}
+
+/* Mobile: single column */
+@media (max-width: 640px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .checkbox,
+    .hint {
+        grid-column: span 1;
+    }
+}
+body.modal-open {
+    overflow: hidden;
+}

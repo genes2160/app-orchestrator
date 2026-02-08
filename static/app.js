@@ -95,11 +95,13 @@ function openModal(mode, appObj = null) {
     $formHint.textContent = "Stop this app before editing (manager enforces this).";
   }
 
+  document.body.classList.add("modal-open"); // NEW
   $backdrop.hidden = false;
   $modal.hidden = false;
 }
 
 function closeModal() {
+  document.body.classList.remove("modal-open"); // NEW
   $backdrop.hidden = true;
   $modal.hidden = true;
   editingApp = null;
