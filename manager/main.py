@@ -209,21 +209,29 @@ def import_apps_yaml(payload: dict = Body(default={})):
 
 @app.post("/apps/{app_id}/start")
 def start_app(app_id: int):
+    print("▶️ start_app called", app_id)
+
     registry.reload()
     app_obj = repo.get(app_id)
     if not app_obj:
+        print("❌ app not found")
         raise HTTPException(404, "App not found")
 
+    print("✅ app loaded:", app_obj.name)
+
     if not app_obj.enabled:
+        print("❌ app disabled")
         raise HTTPException(400, "App is disabled")
 
     if port_is_open(app_obj.host, app_obj.port):
+        print("ℹ️ port already open")
         return {"ok": True, "status": "running", "port": app_obj.port}
 
     extra_args = ["--reload"]
     if app_obj.args:
-        # naive split; keep it simple for now
         extra_args.extend(app_obj.args.split())
+
+    print("🚀 calling pm.start()")
 
     try:
         info = pm.start(
@@ -234,15 +242,19 @@ def start_app(app_id: int):
             entry=app_obj.entry,
             extra_args=extra_args,
         )
-    except RuntimeError as e:
-        raise HTTPException(409, str(e))
     except Exception as e:
-        raise HTTPException(500, f"Failed to start: {e}")
+        print("🔥 pm.start() raised exception:", repr(e))
+        raise
 
+    print("✅ pm.start() returned")
+    print("   pid:", info.pid)
+    print("   port:", info.port)
+
+    print("💾 writing to state store")
     store.upsert_app(
         app_obj.name,
         {
-            "app_id": app_obj.id,       # ✅ NEW
+            "app_id": app_obj.id,
             "pid": info.pid,
             "port": info.port,
             "host": info.host,
@@ -251,8 +263,17 @@ def start_app(app_id: int):
             "started_at": info.started_at,
         },
     )
-    return {"ok": True, "status": "starting", "pid": info.pid, "port": info.port}
 
+    logs = pm.get_logs(app_obj.name)
+    print("📜 initial logs count:", len(logs))
+
+    return {
+        "ok": True,
+        "status": "starting",
+        "pid": info.pid,
+        "port": info.port,
+        "logs": logs[-20:],
+    }
 
 @app.post("/apps/{app_id}/stop")
 def stop_app(app_id: int):

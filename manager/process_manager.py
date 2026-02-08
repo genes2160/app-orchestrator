@@ -1,7 +1,9 @@
 import os
 import signal
 import subprocess
+import sys
 import threading
+import select
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -30,16 +32,17 @@ class ProcessManager:
     def __init__(self):
         self._procs: Dict[str, subprocess.Popen] = {}
         self._logs: Dict[str, Deque[str]] = {}
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def _tail_init(self, name: str) -> None:
         if name not in self._logs:
             self._logs[name] = deque(maxlen=300)
 
     def _log(self, name: str, line: str) -> None:
-        self._tail_init(name)
-        self._logs[name].append(line.rstrip("\n"))
-
+        with self._lock:
+            self._tail_init(name)
+            self._logs[name].append(line.rstrip("\n"))
+            
     def get_logs(self, name: str) -> list[str]:
         with self._lock:
             self._tail_init(name)
@@ -72,11 +75,16 @@ class ProcessManager:
         cwd: str,
         entry: str,
         extra_args: Optional[List[str]] = None,
+        startup_timeout: float = 2.0,
     ) -> RunningInfo:
+        print(f"\n🧠 [pm.start] called for app='{name}'")
+
         with self._lock:
+            print("🔒 [pm.start] acquired lock")
+
             if self.is_running(name):
-                # already running
                 p = self._procs[name]
+                print("⚠️ [pm.start] already running, pid:", p.pid)
                 return RunningInfo(
                     name=name,
                     pid=p.pid,
@@ -87,10 +95,18 @@ class ProcessManager:
                     started_at=time.time(),
                 )
 
+            print("🔍 [pm.start] checking port:", host, port)
             if port_is_open(host, port):
-                raise RuntimeError(f"Port {host}:{port} is already in use")
+                print("❌ [pm.start] port already open")
+                raise RuntimeError(f"Port {host}:{port} already in use")
 
+            # ----------------------------
+            # BUILD COMMAND
+            # ----------------------------
+            # cmd = ["uvicorn", entry, "--host", host, "--port", str(port)]
             cmd = [
+                sys.executable,
+                "-m",
                 "uvicorn",
                 entry,
                 "--host",
@@ -98,11 +114,15 @@ class ProcessManager:
                 "--port",
                 str(port),
             ]
-
             if extra_args:
                 cmd.extend(extra_args)
 
-            # Cross-platform process group handling for clean stop
+            print("🧾 [pm.start] command:", " ".join(cmd))
+            print("📂 [pm.start] cwd:", cwd)
+
+            # ----------------------------
+            # POPENS KWARGS (THIS WAS MISSING)
+            # ----------------------------
             popen_kwargs = dict(
                 cwd=cwd,
                 stdout=subprocess.PIPE,
@@ -112,34 +132,85 @@ class ProcessManager:
             )
 
             if is_windows():
-                popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
-                popen_kwargs["stdin"] = subprocess.DEVNULL
+                popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
             else:
-                popen_kwargs["preexec_fn"] = os.setsid  # new process group
+                popen_kwargs["preexec_fn"] = os.setsid
 
-            p = subprocess.Popen(cmd, **popen_kwargs)  # type: ignore[arg-type]
-            self._procs[name] = p
+            # ----------------------------
+            # START PROCESS
+            # ----------------------------
             self._tail_init(name)
-            self._log(name, f"[manager] started pid={p.pid} host={host} port={port} cwd={cwd}")
+            self._log(name, f"[manager] starting: {' '.join(cmd)}")
+            self._log(name, f"[manager] cwd={cwd}")
 
-            t = threading.Thread(target=self._pump_logs, args=(name, p), daemon=True)
+            try:
+                p = subprocess.Popen(cmd, **popen_kwargs)
+            except Exception as e:
+                print("🔥 [pm.start] Popen failed:", repr(e))
+                raise
+
+            print("📌 [pm.start] subprocess started, pid =", p.pid)
+            self._procs[name] = p
+
+            # ----------------------------
+            # START LOG PUMP THREAD
+            # ----------------------------
+            print("🧵 [pm.start] starting log pump thread")
+            t = threading.Thread(
+                target=self._pump_logs,
+                args=(name, p),
+                daemon=True,
+            )
             t.start()
 
-            return RunningInfo(
-                name=name,
-                pid=p.pid,
-                port=port,
-                host=host,
-                cwd=cwd,
-                cmd=cmd,
-                started_at=time.time(),
-            )
+        # ----------------------------
+        # WAIT FOR STARTUP / PORT
+        # ----------------------------
+        print("⏳ [pm.start] entering startup wait loop")
+
+        deadline = time.time() + startup_timeout
+        while time.time() < deadline:
+            if p.poll() is not None:
+                print("💥 [pm.start] process exited early, code:", p.returncode)
+                self._log(name, f"[manager] process exited early with code {p.returncode}")
+                with self._lock:
+                    self._procs.pop(name, None)
+                raise RuntimeError("App failed during startup (see logs)")
+
+            if port_is_open(host, port):
+                print("✅ [pm.start] port opened successfully")
+                self._log(name, "[manager] port opened successfully")
+                break
+
+            print("… [pm.start] waiting for port")
+            time.sleep(0.1)
+
+        print("🏁 [pm.start] returning RunningInfo")
+
+        return RunningInfo(
+            name=name,
+            pid=p.pid,
+            port=port,
+            host=host,
+            cwd=cwd,
+            cmd=cmd,
+            started_at=time.time(),
+        )
 
     def _pump_logs(self, name: str, p: subprocess.Popen) -> None:
+        """
+        Cross-platform log pump.
+        Safe on Windows.
+        Runs in a daemon thread.
+        """
+        stdout = p.stdout
+        if not stdout:
+            return
+
         try:
-            if not p.stdout:
-                return
-            for line in p.stdout:
+            for line in iter(stdout.readline, ""):
+                if not line:
+                    break
                 self._log(name, line)
         except Exception as e:
             self._log(name, f"[manager] log pump error: {e}")

@@ -221,7 +221,15 @@ $apps.addEventListener("click", async (e) => {
   const id = btn.dataset.id ? Number(btn.dataset.id) : null;
 
   try {
-    if (action === "start") await api(`/apps/${id}/start`, "POST");
+    if (action === "start") {
+      const res = await api(`/apps/${id}/start`, "POST");
+      if (res.logs && res.logs.length) {
+        $logsTitle.textContent = `Startup logs`;
+        $logs.classList.remove("muted");
+        $logs.textContent = res.logs.join("\n");
+      }
+    }
+
     if (action === "stop") await api(`/apps/${id}/stop`, "POST");
     if (action === "restart") await api(`/apps/${id}/restart`, "POST");
 
@@ -309,6 +317,6 @@ $btnLogsRefresh.addEventListener("click", async () => {
 });
 
 // Auto refresh every 3s
-setInterval(() => refresh().catch(() => {}), 3000);
+// setInterval(() => refresh().catch(() => {}), 3000);
 
 refresh().catch((e) => alert(e.message || String(e)));
