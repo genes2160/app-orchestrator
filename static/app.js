@@ -29,6 +29,20 @@ let selectedAppId = null;
 let selectedAppName = null;
 let editingApp = null; // full object
 
+const $loader = document.getElementById("loading-overlay");
+const $loaderText = document.getElementById("loader-text");
+
+function showLoader(text = "Working…") {
+  if ($loaderText) $loaderText.textContent = text;
+  $loader.hidden = false;
+  document.body.style.pointerEvents = "none"; // prevent double-clicks
+}
+
+function hideLoader() {
+  $loader.hidden = true;
+  document.body.style.pointerEvents = "";
+}
+
 function badge(status) {
   let dot = "mid";
   let text = status;
@@ -222,6 +236,7 @@ $apps.addEventListener("click", async (e) => {
 
   try {
     if (action === "start") {
+      showLoader("Starting app…");
       const res = await api(`/apps/${id}/start`, "POST");
       if (res.logs && res.logs.length) {
         $logsTitle.textContent = `Startup logs`;
@@ -230,8 +245,14 @@ $apps.addEventListener("click", async (e) => {
       }
     }
 
-    if (action === "stop") await api(`/apps/${id}/stop`, "POST");
-    if (action === "restart") await api(`/apps/${id}/restart`, "POST");
+    if (action === "stop") {
+      showLoader("Stopping app…");
+      await api(`/apps/${id}/stop`, "POST");
+    }
+    if (action === "restart") {
+      showLoader("Restarting app…");
+      await api(`/apps/${id}/restart`, "POST");
+    }
 
     if (action === "logs") {
       await loadLogs(id, btn.dataset.name);
@@ -254,6 +275,8 @@ $apps.addEventListener("click", async (e) => {
     if (selectedAppId) await loadLogs(selectedAppId, selectedAppName);
   } catch (err) {
     alert(err.message || String(err));
+  } finally {
+    hideLoader();
   }
 });
 

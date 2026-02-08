@@ -299,7 +299,8 @@ def restart_app(app_id: int):
     if not app_obj.enabled:
         raise HTTPException(400, "App is disabled")
 
-    extra_args = ["--reload"]
+    # extra_args = ["--reload"]
+    extra_args = []
     if app_obj.args:
         extra_args.extend(app_obj.args.split())
 

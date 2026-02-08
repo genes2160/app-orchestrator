@@ -222,31 +222,21 @@ class ProcessManager:
                 return False
 
             pid = p.pid
+            self._log(name, f"[manager] stopping pid={pid}")
+
             try:
                 if is_windows():
-                    # CTRL_BREAK_EVENT requires a console; best effort: terminate
-                    p.terminate()
+                    # Kill process tree on Windows
+                    subprocess.run(
+                        ["taskkill", "/PID", str(pid), "/T", "/F"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
                 else:
                     os.killpg(os.getpgid(pid), signal.SIGTERM)
-
-                self._log(name, f"[manager] stopping pid={pid}")
             except Exception as e:
                 self._log(name, f"[manager] stop error: {e}")
                 return False
-
-        # wait outside lock
-        try:
-            p.wait(timeout=6)
-        except Exception:
-            try:
-                with self._lock:
-                    if is_windows():
-                        p.kill()
-                    else:
-                        os.killpg(os.getpgid(pid), signal.SIGKILL)
-                    self._log(name, f"[manager] force-killed pid={pid}")
-            except Exception:
-                pass
 
         with self._lock:
             self._procs.pop(name, None)
