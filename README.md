@@ -1,322 +1,141 @@
-Perfect — this is the right moment to **lock the project narrative** so it’s understandable to *you in 6 months* and to *any serious dev* who opens the repo.
+# ⚙️ App Orchestrator
 
-Below are **two clean deliverables**:
+A lightweight, local-first FastAPI application manager that allows you to register, start, stop, restart, and monitor multiple FastAPI applications from a single dashboard — without Docker or Kubernetes.
 
-1. `.gitignore` (tailored to this project, not generic junk)
-2. **Detailed README** covering:
-
-   * summary
-   * problem
-   * solution
-   * architecture
-   * technical specification
-   * functional specification
-   * constraints & design decisions
-
-No fluff, no marketing-speak.
+App Orchestrator is designed for developers who run multiple services locally and want structured process control without heavyweight infrastructure.
 
 ---
 
-## 1️⃣ `.gitignore`
+## 📚 Table of Contents
 
-```gitignore
-# -----------------------------
-# Python
-# -----------------------------
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.env
-.venv
-venv/
-ENV/
-
-# -----------------------------
-# FastAPI / Uvicorn
-# -----------------------------
-*.log
-*.pid
-
-# -----------------------------
-# OS / Editor
-# -----------------------------
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-
-# -----------------------------
-# Node / Frontend tooling (if ever added)
-# -----------------------------
-node_modules/
-
-# -----------------------------
-# Database & Runtime State
-# -----------------------------
-state/*.db
-state/*.db-journal
-state/running.json
-
-# -----------------------------
-# Build / Cache
-# -----------------------------
-dist/
-build/
-.cache/
-
-# -----------------------------
-# Secrets (future-proofing)
-# -----------------------------
-*.key
-*.pem
-```
-
-📌 **Intentional choices**
-
-* `state/apps.db` ❌ ignored → local registry only
-* `running.json` ❌ ignored → ephemeral runtime state
-* `apps.yaml` ✅ tracked → import source / documentation
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Running the Manager](#running-the-manager)
+- [Using the Dashboard](#using-the-dashboard)
+- [API Reference](#api-reference)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [Design Decisions](#design-decisions)
+- [Limitations](#limitations)
+- [Future Improvements](#future-improvements)
 
 ---
 
-## 2️⃣ `README.md` — Detailed, Technical, Honest
+## 🔍 Overview
 
-```md
-# ⚙️ FastAPI App Manager
+App Orchestrator acts as a process supervisor for FastAPI applications.
 
-A **local-first FastAPI process manager** for running, controlling, and monitoring **multiple FastAPI applications** from a single dashboard — without Docker, Kubernetes, or terminal juggling.
-
-This project acts as a **developer-focused supervisor** for FastAPI apps during local development and lightweight staging environments.
-
----
-
-## 📌 Summary
-
-FastAPI App Manager provides:
-
-- A **SQLite-backed registry** of FastAPI apps
-- A **web dashboard** to start, stop, restart, and monitor apps
-- Safe **subprocess orchestration** using `uvicorn`
-- Clear separation between:
-  - *app definition* (persistent)
-  - *runtime state* (ephemeral)
-- Zero coupling between managed apps
-
-Each managed FastAPI app runs **independently** in its own process and working directory.
-
----
-
-## ❓ Problem Statement
-
-When working with multiple FastAPI services locally, developers commonly face:
-
-- Multiple terminals running `uvicorn`
-- Port collisions
-- Forgetting which services are running
-- Manual tracking of PIDs
-- Editing config files instead of using UI
-- Accidental crashes killing everything
-- No single source of truth for “what apps exist”
-
-Tools like Docker, PM2, or Supervisor often feel:
-- Overkill for local dev
-- Non-Python-native
-- Opaque or heavyweight
-
----
-
-## 💡 Solution
-
-This project introduces a **FastAPI-native App Manager** that:
-
-- Treats each FastAPI app as a **managed process**
-- Uses **SQLite** as the app registry
-- Controls apps using `subprocess + uvicorn`
-- Exposes a **clean REST API + HTML UI**
-- Never imports or couples managed apps
-
-The manager itself is just **another FastAPI app** — but one that orchestrates others.
-
----
-
-## 🧠 Core Design Principles
-
-- **No app imports** → no dependency conflicts
-- **Explicit ports** → predictable behavior
-- **One process per app**
-- **Crash isolation** → manager survives child crashes
-- **Local-first** → no Docker required
-- **Human-readable state**
-- **Simple > clever**
-
----
-
-## 🏗️ Architecture Overview
+Instead of manually running:
 
 ```
-
-FastAPI App Manager
-│
-├── SQLite (apps.db)
-│   └── App definitions (name, path, entry, port, enabled)
-│
-├── Process Manager (subprocess)
-│   ├── uvicorn app.main:app --port X
-│   ├── uvicorn server:app --port Y
-│
-├── Runtime State (running.json)
-│   └── pid, port, timestamps (ephemeral)
-│
-├── REST API
-│   ├── CRUD apps
-│   ├── start / stop / restart
-│   └── logs
-│
-└── HTML Dashboard
-├── Add / edit apps
-├── Start / stop buttons
-├── Status indicators
-└── Open app links
-
-```
-
----
-
-## 🧾 Technical Specification
-
-### Backend
-- **Language**: Python 3.10+
-- **Framework**: FastAPI
-- **Server**: Uvicorn
-- **Persistence**: SQLite (no ORM)
-- **Process control**: `subprocess.Popen`
-- **State tracking**:
-  - Persistent: SQLite (`apps.db`)
-  - Runtime: `running.json` + in-memory tracking
-
-### Frontend
-- Plain HTML + CSS + vanilla JS
-- No build step
-- Auto-refresh polling
-- Modal-based CRUD UI
-
----
-
-## 🗄️ Data Model
-
-### `apps` (SQLite)
-
-| Field | Description |
-|-----|------------|
-| id | Primary key |
-| name | Unique app identifier |
-| path | Folder containing the app |
-| entry | Uvicorn entry point (`module:app`) |
-| host | Bind host (default `127.0.0.1`) |
-| port | Assigned port |
-| args | Optional uvicorn args |
-| enabled | Can app be started |
-| created_at | Timestamp |
-| updated_at | Timestamp |
-
----
-
-## 🔌 API Endpoints (Functional Spec)
-
-### App Registry (CRUD)
-
-```
-
-GET    /apps
-POST   /apps
-PUT    /apps/{id}
-DELETE /apps/{id}
-
-```
-
-Rules:
-- App names must be unique
-- Path must exist and be a directory
-- Entry must be `module:app`
-- Apps **cannot be edited or deleted while running**
-
----
-
-### Lifecycle Management
-
-```
-
-POST /apps/{id}/start
-POST /apps/{id}/stop
-POST /apps/{id}/restart
-GET  /apps/{id}/logs
-
-```
-
-Rules:
-- Disabled apps cannot be started
-- Ports must be free
-- Start is idempotent
-- Stop cleans runtime state
-- Logs are session-scoped (not persisted)
-
----
-
-### Import Existing Config
-
-```
-
-POST /apps/import-yaml
-
+uvicorn app1.main:app --port 8001
+uvicorn app2.main:app --port 8002
 ````
 
-- Imports `config/apps.yaml`
-- Upserts apps by name
-- Does **not** auto-start apps
-- One-time migration helper
+You register the apps once and control them via a UI or API.
+
+It manages:
+
+* App registry (SQLite-backed)
+* Subprocess lifecycle (start / stop / restart)
+* Port monitoring
+* Log streaming
+* Runtime state tracking
+
+Each managed app runs as an isolated OS process.
 
 ---
 
-## 🧪 Runtime Behavior
+## ✨ Features
 
-- Manager checks **actual port availability** to determine running state
-- PID existence alone is not trusted
-- Manager restart does not reattach to old processes (intentional)
-- Runtime state is treated as **best-effort, not authoritative**
-
----
-
-## 🚫 Non-Goals (By Design)
-
-- No Docker orchestration
-- No Kubernetes
-- No background job queues
-- No distributed deployment
-- No auto-scaling
-- No auth (local dev tool)
+* ✅ Register multiple FastAPI apps
+* ✅ Start / Stop / Restart apps
+* ✅ Port conflict detection
+* ✅ Real-time log streaming
+* ✅ Crash isolation
+* ✅ Host + port aware shutdown
+* ✅ Cross-platform support (Windows, macOS, Linux)
+* ✅ SQLite-based persistent registry
+* ✅ No Docker required
 
 ---
 
-## 🧩 Known Limitations
+## 🏗 Architecture
 
-- Browser cannot open native folder picker (security limitation)
-- Logs are not persisted across manager restarts
-- PID reattachment is intentionally avoided for safety
-- Args parsing is simple string split
+```
+App Orchestrator (FastAPI)
+│
+├── SQLite (state/apps.db)
+│   └── Stores app definitions
+│
+├── Process Manager
+│   ├── Uses subprocess.Popen
+│   ├── Manages uvicorn processes
+│   ├── Tracks PIDs
+│   └── Escalates port-based kills if needed
+│
+├── Runtime State
+│   └── state/running.json
+│
+└── Dashboard (HTML + JS)
+```
 
-These are **deliberate tradeoffs**, not oversights.
+Each managed app is started via:
+
+```
+uvicorn module:app --host <host> --port <port>
+```
+
+The manager never imports the app directly.
+
+---
+
+## 🧰 Requirements
+
+* Python 3.10+
+* pip
+* uvicorn
+* FastAPI
+
+---
+
+## 🚀 Installation
+
+Clone the repository:
+
+```
+git clone https://github.com/genes2160/app-orchestrator.git
+cd app-orchestrator
+```
+
+Create virtual environment (recommended):
+
+```
+python -m venv venv
+source venv/bin/activate  # macOS/Linux
+venv\Scripts\activate     # Windows
+```
+
+Install dependencies:
+
+```
+pip install -r requirements.txt
+```
 
 ---
 
 ## ▶️ Running the Manager
 
-```bash
-pip install -r requirements.txt
-uvicorn manager.main:app --reload --port 8000
-````
+Start the orchestrator:
 
-Open:
+```
+uvicorn manager.main:app --reload --port 8000
+```
+
+Open in browser:
 
 ```
 http://127.0.0.1:8000
@@ -324,27 +143,166 @@ http://127.0.0.1:8000
 
 ---
 
-## 🔮 Future Enhancements (Optional)
+## 🖥 Using the Dashboard
 
-* Auto-assign free ports
-* Start/Stop all apps
+1. Add a new app:
+
+   * Name
+   * Path to app directory
+   * Entry point (e.g. `main:app`)
+   * Host
+   * Port
+
+2. Click **Start**
+
+3. Monitor logs
+
+4. Stop or Restart as needed
+
+Rules:
+
+* Apps must have unique names
+* Ports must not already be in use
+* Running apps cannot be edited
+
+---
+
+## 🔌 API Reference
+
+### List Apps
+
+```
+GET /apps
+```
+
+### Create App
+
+```
+POST /apps
+```
+
+### Update App
+
+```
+PUT /apps/{id}
+```
+
+### Delete App
+
+```
+DELETE /apps/{id}
+```
+
+### Start App
+
+```
+POST /apps/{id}/start
+```
+
+### Stop App
+
+```
+POST /apps/{id}/stop
+```
+
+### Restart App
+
+```
+POST /apps/{id}/restart
+```
+
+### Get Logs
+
+```
+GET /apps/{id}/logs
+```
+
+---
+
+## 📂 Project Structure
+
+```
+app-orchestrator/
+│
+├── manager/
+│   ├── main.py
+│   ├── process_manager.py
+│   ├── store.py
+│   ├── utils.py
+│   └── templates/
+│
+├── state/
+│   ├── apps.db
+│   └── running.json
+│
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## ⚙️ Configuration
+
+App definitions are stored in:
+
+```
+state/apps.db
+```
+
+Runtime state is stored in:
+
+```
+state/running.json
+```
+
+You may optionally import apps via YAML if enabled.
+
+---
+
+## 🧠 Design Decisions
+
+* No Docker dependency
+* No app imports (process isolation)
+* PID-first shutdown
+* Port-based escalation kill
+* SQLite over ORM for simplicity
+* Local-only by design
+* No authentication (dev tool)
+
+---
+
+## 🚫 Limitations
+
+* Not intended for production orchestration
+* Logs are session-based
+* No distributed support
+* No container integration
+* No authentication layer
+
+This tool is optimized for developer workflows.
+
+---
+
+## 🔮 Future Improvements
+
+* Auto port assignment
 * Health check endpoints
-* Resource usage (CPU/RAM)
-* Native wrapper (Tauri / Electron)
-* System service (systemd / launchd)
+* CPU/RAM monitoring
+* Start/Stop all apps
+* System service integration
+* Desktop wrapper (Tauri)
 
 ---
 
 ## 🏁 Final Notes
 
-This project is intentionally:
+App Orchestrator is built to:
 
-* **boring**
-* **predictable**
-* **transparent**
+* Remove terminal clutter
+* Provide deterministic app control
+* Keep orchestration simple and transparent
 
-It exists to remove friction, not introduce abstractions.
-
-If you understand this README, you understand the system.
+If you run multiple FastAPI services locally, this replaces juggling terminals with structure.
 
 ```
+
