@@ -282,7 +282,7 @@ def stop_app(app_id: int):
     if not app_obj:
         raise HTTPException(404, "App not found")
 
-    stopped = pm.stop(app_obj.name)
+    stopped = pm.stop(app_obj.name, host=app_obj.host, port=app_obj.port)
     store.delete_app(app_obj.name)
 
     still_serving = port_is_open(app_obj.host, app_obj.port)

@@ -42,6 +42,7 @@ class ProcessManager:
         with self._lock:
             self._tail_init(name)
             self._logs[name].append(line.rstrip("\n"))
+            print(line.rstrip("\n"))
             
     def get_logs(self, name: str) -> list[str]:
         with self._lock:
@@ -215,29 +216,102 @@ class ProcessManager:
         except Exception as e:
             self._log(name, f"[manager] log pump error: {e}")
 
-    def stop(self, name: str) -> bool:
+    def stop(self, name: str, *, host: str, port: int) -> bool:
+        """
+        Stop managed app (PID-first, then port-owner kill).
+        Works even after manager reload (no in-memory pid).
+        """
+        self._log(name, "[manager] stop requested")
+
+        # ---------- helper: kill PID tree ----------
+        def _kill_pid_tree(pid: int) -> None:
+            if pid <= 0:
+                return
+            if is_windows():
+                subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                os.killpg(os.getpgid(pid), signal.SIGTERM)
+
+        # ---------- helper: find PIDs listening on port ----------
+        def _pids_listening_on_port_windows(p: int) -> list[int]:
+            # netstat -ano output includes LISTENING rows; last token is PID
+            out = subprocess.check_output(["netstat", "-ano"], text=True, errors="ignore")
+            pids: list[int] = []
+            needle = f":{p}"
+            for line in out.splitlines():
+                if "LISTENING" not in line:
+                    continue
+                # Example:
+                # TCP    127.0.0.1:8200    0.0.0.0:0    LISTENING    12345
+                if needle not in line:
+                    continue
+                parts = line.split()
+                if not parts:
+                    continue
+                try:
+                    pid = int(parts[-1])
+                    if pid not in pids:
+                        pids.append(pid)
+                except Exception:
+                    pass
+            return pids
+
+        # 1) Try kill tracked process (if present)
+        tracked_pid = None
         with self._lock:
             p = self._procs.get(name)
-            if not p or p.poll() is not None:
-                return False
+            if p and p.poll() is None:
+                tracked_pid = p.pid
 
-            pid = p.pid
-            self._log(name, f"[manager] stopping pid={pid}")
-
+        if tracked_pid:
+            self._log(name, f"[manager] stopping tracked pid={tracked_pid}")
             try:
-                if is_windows():
-                    # Kill process tree on Windows
-                    subprocess.run(
-                        ["taskkill", "/PID", str(pid), "/T", "/F"],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
-                else:
-                    os.killpg(os.getpgid(pid), signal.SIGTERM)
+                _kill_pid_tree(tracked_pid)
             except Exception as e:
-                self._log(name, f"[manager] stop error: {e}")
-                return False
+                self._log(name, f"[manager] tracked pid stop error: {e}")
 
+            time.sleep(0.4)
+
+        # 2) If port already closed, we're done
+        if not port_is_open(host, port):
+            self._log(name, "[manager] ✅ port released")
+            with self._lock:
+                self._procs.pop(name, None)
+            return True
+
+        # 3) Escalate: kill whoever is LISTENING on the port
+        self._log(name, f"[manager] port {port} still open — killing port owner(s)")
+
+        try:
+            if is_windows():
+                pids = _pids_listening_on_port_windows(port)
+                if not pids:
+                    self._log(name, "[manager] no LISTENING pid found for port (netstat)")
+                for pid in pids:
+                    self._log(name, f"[manager] killing pid {pid} (port owner)")
+                    _kill_pid_tree(pid)
+            else:
+                # linux/mac
+                subprocess.run(
+                    ["bash", "-c", f"lsof -ti :{port} | xargs kill -9"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+        except Exception as e:
+            self._log(name, f"[manager] escalation error: {e}")
+
+        time.sleep(0.6)
+
+        # 4) Verify
+        if port_is_open(host, port):
+            self._log(name, "[manager] ❌ port still serving after escalation")
+            return False
+
+        self._log(name, "[manager] ✅ port released after escalation")
         with self._lock:
             self._procs.pop(name, None)
 
@@ -253,7 +327,7 @@ class ProcessManager:
         entry: str,
         extra_args: Optional[List[str]] = None,
     ) -> RunningInfo:
-        self.stop(name)
+        self.stop(name, host=host, port=port)
         return self.start(
             name,
             host=host,
