@@ -31,6 +31,16 @@
 
     <main class="wrap">
         <section class="card">
+            <!-- NEW: search bar -->
+            <div style="padding:12px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center;">
+                <input 
+                    id="search-input"
+                    placeholder="🔎 Search apps..."
+                    style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.03); color:var(--text); outline:none;"
+                />
+                <span id="search-count" class="muted" style="font-size:12px;"></span>
+            </div>
+
             <div class="row head">
                 <div>App</div>
                 <div>Status</div>

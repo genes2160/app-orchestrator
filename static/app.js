@@ -28,6 +28,10 @@ const $btnDelete = document.getElementById("btn-delete");
 let selectedAppId = null;
 let selectedAppName = null;
 let editingApp = null; // full object
+const $search = document.getElementById("search-input");
+const $searchCount = document.getElementById("search-count");
+let currentApps = [];
+
 
 const $loader = document.getElementById("loading-overlay");
 const $loaderText = document.getElementById("loader-text");
@@ -169,7 +173,9 @@ function row(appObj) {
 async function refresh() {
   const list = await api("/apps");
   list.sort((a, b) => a.name.localeCompare(b.name));
-  $apps.innerHTML = list.map(row).join("");
+
+  currentApps = list;
+  renderApps(list);
 
   if (selectedAppId) {
     $logsTitle.textContent = `Viewing: ${selectedAppName}`;
@@ -179,7 +185,41 @@ async function refresh() {
     $btnLogsRefresh.disabled = true;
   }
 }
+function renderApps(list) {
+  if (!list.length) {
+    $apps.innerHTML = `
+      <div style="padding:20px; text-align:center; color:var(--muted);">
+        No apps match your search.
+      </div>
+    `;
+    return;
+  }
 
+  $apps.innerHTML = list.map(row).join("");
+}
+function filterApps(query) {
+  query = query.toLowerCase().trim();
+
+  if (!query) {
+    renderApps(currentApps);
+    $searchCount.textContent = "";
+    return;
+  }
+
+  const filtered = currentApps.filter(app =>
+    app.name.toLowerCase().includes(query) ||
+    app.path.toLowerCase().includes(query) ||
+    app.entry.toLowerCase().includes(query) ||
+    String(app.port).includes(query)
+  );
+
+  renderApps(filtered);
+
+  $searchCount.textContent = `${filtered.length} result${filtered.length !== 1 ? "s" : ""}`;
+}
+$search.addEventListener("input", (e) => {
+  filterApps(e.target.value);
+});
 async function loadLogs(appId, name) {
   selectedAppId = appId;
   selectedAppName = name;

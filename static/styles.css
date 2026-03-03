@@ -39,14 +39,14 @@ body {
     color: var(--muted);
     font-size: 12px;
 }
-
 .wrap {
     padding: 16px;
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-    max-width: 1100px;
+    grid-template-columns: 2fr 1.2fr;
+    gap: 16px;
+    max-width: 1400px;
     margin: 0 auto;
+    align-items: start;
 }
 
 .card {
@@ -55,7 +55,25 @@ body {
     border-radius: 12px;
     overflow: hidden;
 }
+.logs {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    padding: 12px;
+}
 
+#apps{
+    overflow-y: scroll;
+    height: 550px;
+    min-height: 550px;
+    max-height: 550px;
+}
+/* Responsive fallback */
+@media (max-width: 1100px) {
+    .wrap {
+        grid-template-columns: 1fr;
+    }
+}
 .row {
     display: grid;
     grid-template-columns: 1.2fr 0.9fr 0.6fr 0.6fr 1.4fr 0.6fr;
@@ -147,9 +165,6 @@ a.link:hover {
     border-bottom-color: rgba(255, 255, 255, 0.6);
 }
 
-.logs {
-    padding: 12px;
-}
 
 .logs-head {
     display: flex;
@@ -172,98 +187,97 @@ a.link:hover {
 }
 
 .pre {
+    flex: 1;
     margin: 0;
     padding: 12px;
-    min-height: 220px;
-    max-height: 420px;/* Modal */
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.55);
-        }
-    
-        .modal {
-            position: fixed;
-            left: 50%;
-            top: 10%;
-            transform: translateX(-50%);
-            width: min(720px, calc(100% - 24px));
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            overflow: hidden;
-        }
-    
-        .modal-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid var(--line);
-        }
-    
-        .modal-head h3 {
-            margin: 0;
-            font-size: 14px;
-        }
-    
-        .modal-body {
-            padding: 12px;
-        }
-    
-        .modal-foot {
-            display: flex;
-            gap: 10px;
-            padding: 12px;
-            border-top: 1px solid var(--line);
-        }
-    
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-    
-        .grid label {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-size: 12px;
-            color: var(--muted);
-        }
-    
-        .grid input {
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.02);
-            color: var(--text);
-            outline: none;
-        }
-    
-        .grid input:focus {
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-    
-        .checkbox {
-            grid-column: span 2;
-            flex-direction: row !important;
-            align-items: center;
-            gap: 10px !important;
-            color: var(--text) !important;
-        }
-    
-        .hint {
-            grid-column: span 2;
-            font-size: 12px;
-            color: var(--muted);
-            padding-top: 4px;
-        }
     overflow: auto;
     font-size: 12px;
     line-height: 1.4;
 }
 
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.modal {
+    position: fixed;
+    left: 50%;
+    top: 10%;
+    transform: translateX(-50%);
+    width: min(720px, calc(100% - 24px));
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.modal-head h3 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.modal-body {
+    padding: 12px;
+}
+
+.modal-foot {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.grid input {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text);
+    outline: none;
+}
+
+.grid input:focus {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.checkbox {
+    grid-column: span 2;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 10px !important;
+    color: var(--text) !important;
+}
+
+.hint {
+    grid-column: span 2;
+    font-size: 12px;
+    color: var(--muted);
+    padding-top: 4px;
+}
 .muted {
     color: var(--muted);
 }
